@@ -175,7 +175,8 @@ async def _background_runner() -> None:
 
 
 def main() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     # Start background WS task
     loop.create_task(_background_runner())
@@ -185,11 +186,16 @@ def main() -> None:
     server = uvicorn.Server(config)
 
     # Graceful shutdown
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, server.handle_exit, sig, None)
+    try:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, server.handle_exit, sig, None)
+    except NotImplementedError:
+        # Some platforms (e.g., Windows) may not support signal handlers
+        pass
 
     loop.run_until_complete(server.serve())
 
 
 if __name__ == "__main__":
     main()
+
